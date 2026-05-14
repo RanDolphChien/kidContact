@@ -176,6 +176,14 @@
         }
         body.edit-mode .delete-student-btn { display: inline-block; }
 
+        .btn-row {
+            display: none;
+            text-align: right;
+            margin-top: 4px;
+            gap: 6px;
+        }
+        body.edit-mode .btn-row { display: flex; justify-content: flex-end; gap: 6px; }
+
         /* 登入頁面 */
         #login-overlay {
             position: fixed;
@@ -458,7 +466,6 @@
             commentRow.className = 'row-section font-zh comment';
             const delBtn = document.createElement('button');
             delBtn.className = 'delete-student-btn no-print';
-            delBtn.style.cssText = 'float:right; margin-left:8px;';
             delBtn.textContent = '✕ 刪除學生';
             delBtn.addEventListener('click', async () => {
                 if (container.querySelectorAll('.a4-page').length <= 1) return;
@@ -468,7 +475,6 @@
 
             const insertBtn = document.createElement('button');
             insertBtn.className = 'insert-student-btn no-print';
-            insertBtn.style.cssText = 'float:right; margin-left:8px;';
             insertBtn.textContent = '＋ 插入學生';
             insertBtn.addEventListener('click', () => {
                 const p0 = container.querySelector('.a4-page');
@@ -492,11 +498,16 @@
             const commentEl = document.createElement('span');
             commentEl.className = 'comment-field';
             commentEl.textContent = student.comment;
-            commentRow.appendChild(insertBtn);
-            commentRow.appendChild(delBtn);
             commentRow.appendChild(nameEl);
             commentRow.appendChild(commentEl);
+            commentRow.style.borderBottom = 'none';
             col.appendChild(commentRow);
+
+            const btnRow = document.createElement('div');
+            btnRow.className = 'btn-row no-print';
+            btnRow.appendChild(delBtn);
+            btnRow.appendChild(insertBtn);
+            col.appendChild(btnRow);
 
             page.appendChild(col);
             return page;

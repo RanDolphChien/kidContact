@@ -21,7 +21,7 @@
             background-color: #e0e0e0;
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
+            align-items: center;
             margin: 0;
             width: 100%;
             font-size: 18px;
@@ -51,7 +51,8 @@
         }
 
         @media screen and (max-width: 500px) {
-            body { font-size: 14px; }
+            body { font-size: 14px; align-items: flex-start; }
+            #app-content { align-items: flex-start; }
             .a4-page { min-height: unset; padding: 3mm; margin-bottom: 10px; }
             .single-column { max-width: 100%; }
             .row-section { padding: 6px 8px; }
@@ -210,7 +211,7 @@
         #login-btn:hover { background: #357abd; }
         #login-btn:disabled { background: #aaa; cursor: default; }
         #login-error { color: #c00; font-size: 14px; min-height: 1.2em; text-align: center; }
-        #app-content { display: flex; flex-direction: column; align-items: flex-start; width: 100%; }
+        #app-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
         #app-content.hidden { display: none; }
         .logout-btn { font-size: 13px; color: #666; background: none; border: 1px solid #ccc; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
         .logout-btn:hover { color: #c00; border-color: #c00; }

@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kid 聯絡單</title>
+    <style>
+        @page { margin: 0; size: A4; }
+        @media print {
+            body, html { margin: 0; padding: 0; }
+            body { display: block; }
+            #pages-container { margin: 0; padding: 0; }
+            header, footer { display: none; }
+            .no-print { display: none !important; }
+            .a4-page { page-break-after: always; height: 290mm; overflow: hidden; margin-bottom: 0; }
+            .a4-page:last-child { page-break-after: avoid; }
+        }
+
+        body {
+            background-color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* padding: 10px; */
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .a4-page {
+            width: 210mm;
+            min-height: 290mm;
+            margin: 0 0 15px 0;
+            padding: 5mm;
+            background: white;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .single-column {
+            width: 100%;
+            max-width: 130mm;
+            border: 2px solid black;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        .row-section {
+            border-bottom: 2px solid black;
+            padding: 8px 12px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+        .row-section:last-child { border-bottom: none; }
+
+        .date-section {
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .label-box {
+            border: 1px solid black;
+            width: fit-content;
+            margin: 0 auto 8px;
+            padding: 2px 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .font-zh { font-family: "標楷體", "DFKai-SB", serif; }
+        .font-en { font-family: Arial, sans-serif; }
+
+        .item-list {
+            margin: 0;
+            padding-left: 22px;
+            list-style-type: square;
+        }
+        .item-list li { margin-bottom: 3px; }
+
+        .reminders { line-height: 1.7; white-space: pre-line; }
+        .comment   { line-height: 1.5; }
+
+        .student-name { font-weight: none; }
+
+        .controls {
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+            margin-bottom: 15px;
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* 編輯中欄位樣式：只對真正可編輯的元素套用 */
+        body.edit-mode [contenteditable="true"] {
+            outline: 2px dashed #4a90e2;
+            background: #f0f7ff;
+            border-radius: 3px;
+            cursor: text;
+            min-height: 1em;
+        }
+
+        .delete-item-btn {
+            display: none;
+            margin-left: 6px;
+            background: none;
+            border: none;
+            color: #c00;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 0 2px;
+        }
+        body.edit-mode .delete-item-btn { display: inline; }
+
+        /* 課程欄編輯按鈕只在第一頁顯示 */
+        .a4-page ~ .a4-page .delete-item-btn,
+        .a4-page ~ .a4-page .add-item-btn { display: none !important; }
+
+        .add-item-btn {
+            display: none;
+            margin-top: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        body.edit-mode .add-item-btn { display: block; }
+
+        .add-student-btn { display: none; }
+        body.edit-mode .add-student-btn { display: inline-block; }
+
+        .delete-student-btn {
+            display: none;
+            background: none;
+            border: 1px solid #c00;
+            color: #c00;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 1px 6px;
+            border-radius: 3px;
+        }
+        body.edit-mode .delete-student-btn { display: inline-block; }
+
+        /* 登入頁面 */
+        #login-overlay {
+            position: fixed;
+            inset: 0;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        #login-overlay.hidden { display: none; }
+        #login-box {
+            background: white;
+            padding: 40px 48px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            min-width: 300px;
+        }
+        #login-box h2 { margin: 0 0 6px; font-size: 22px; }
+        #login-box input {
+            width: 100%;
+            padding: 8px 12px;
+            font-size: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        #login-btn {
+            width: 100%;
+            padding: 9px;
+            font-size: 16px;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        #login-btn:hover { background: #357abd; }
+        #login-btn:disabled { background: #aaa; cursor: default; }
+        #login-error { color: #c00; font-size: 14px; min-height: 1.2em; text-align: center; }
+        #app-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        #app-content.hidden { display: none; }
+        .logout-btn { font-size: 13px; color: #666; background: none; border: 1px solid #ccc; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
+        .logout-btn:hover { color: #c00; border-color: #c00; }
+    </style>
+</head>
+<body>
+
+    <div id="login-overlay">
+        <div id="login-box">
+            <h2 class="font-zh">Kid 聯絡單</h2>
+            <input type="email" id="login-username" placeholder="電子郵件" autocomplete="email">
+            <input type="password" id="login-password" placeholder="密碼" autocomplete="current-password">
+            <button id="login-btn">登入</button>
+            <div id="login-error"></div>
+        </div>
+    </div>
+
+    <div id="app-content" class="hidden">
+        <div class="controls no-print">
+            <button id="editBtn">編輯</button>
+            <button id="printBtn">列印</button>
+            <button id="addStudentBtn" class="add-student-btn no-print">＋ 新增學生</button>
+            <span id="syncStatus" class="no-print" style="font-size:12px;color:#666;margin-left:4px;"></span>
+            <span id="current-user" class="no-print" style="font-size:12px;color:#888;margin-left:4px;"></span>
+            <button id="logoutBtn" class="logout-btn no-print">登出</button>
+        </div>
+        <div id="pages-container"></div>
+    </div>
+
+    <script>
+        // ── Supabase 設定（填入後即啟用雲端同步）──
+        const SUPABASE_URL = 'https://wwxkruedsnguzydezvug.supabase.co';  // 例：https://xxxx.supabase.co
+        const SUPABASE_KEY = 'sb_publishable_pDYfSiQR18mOqZ-5YowdKg_wAr9qeZO';  // anon public key
+        const SUPABASE_ENABLED = !!(SUPABASE_URL && SUPABASE_KEY);
+        const LS_KEY = 'kid_contact_state';
+
+        const INITIAL_DATE = '日期：115 年 5 月 13 日(三)';
+        const INITIAL_COURSES = [
+            'Hats On Top - Unit 8, Lesson 7',
+            'Speak Book - P.12',
+            'Check Up Book - P.28',
+            'Smart Phonics - P.48-51',
+            'On Track Reading - Book 7, P.5-8',
+            'MPM Math',
+            'Flip Book - P.12',
+            'Tongue Twisters - U, V',
+            'Phonics ABC(Writing) - P.38'
+        ];
+        const INITIAL_REMINDERS = '▲ 今天發回英文有聲故事書，請陪同孩子閱讀，並請在下週四之前歸還，謝謝您。\n▲ 下週二(5/19)的晚上有電話教學，孩子將會接到電教老師的電話喲！';
+        const INITIAL_STUDENTS = [
+            {name: 'Rafael', comment: '在英文課'},
+            {name: 'Isla', comment: '在英文課'},
+            {name: 'Marta', comment: '在英文課'},
+            {name: 'Johnny', comment: '在英文課'},
+            {name: 'Claire', comment: '在英文課'},
+            {name: 'Evelyn', comment: '在英文課'},
+            {name: 'Jerry', comment: '在英文課'},
+            {name: 'Evie', comment: '在英文課'},
+            {name: 'Jill', comment: '在英文課'},
+            {name: 'Mick', comment: '在英文課'},
+            {name: 'Sisi', comment: '在英文課'},
+            {name: 'Henry', comment: '在英文課'},
+            {name: 'Jenny', comment: '在英文課'},
+            {name: 'Thomas', comment: '在英文課'},
+            {name: 'Zorya', comment: '在英文課'},
+            {name: 'Leo', comment: '在英文課'},
+            {name: 'Fifi', comment: '在英文課'},
+            {name: 'Luca', comment: '在英文課'},
+            {name: 'Dora', comment: '在英文課'},
+            {name: 'Ollie', comment: '在英文課'},
+            {name: 'Deirdre', comment: '在英文課'},
+            {name: 'Eli', comment: '在英文課'},
+            {name: 'Angie', comment: '在英文課'},
+            {name: 'Ian', comment: '在英文課'},
+            {name: 'Queena', comment: '在英文課'}
+        ];
+
+        const container = document.getElementById('pages-container');
+
+        // ── 狀態擷取 ──
+        function getCurrentState() {
+            const p0 = container.querySelector('.a4-page');
+            if (!p0) return null;
+            return {
+                date: p0.querySelector('.date-field').textContent,
+                reminders: p0.querySelector('.reminders-field').innerText,
+                courses: Array.from(p0.querySelectorAll('.li-content')).map(s => s.textContent),
+                students: Array.from(container.querySelectorAll('.a4-page')).map(page => ({
+                    name: page.querySelector('.student-name').textContent.trim(),
+                    comment: page.querySelector('.comment-field').textContent
+                }))
+            };
+        }
+
+        function buildPagesFromState(state) {
+            container.innerHTML = '';
+            state.students.forEach(s =>
+                container.appendChild(buildPage(s, state.courses, state.date, state.reminders))
+            );
+        }
+
+        // ── localStorage ──
+        function saveToLocal(state) {
+            try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e) {}
+        }
+        function loadFromLocal() {
+            try { const d = localStorage.getItem(LS_KEY); return d ? JSON.parse(d) : null; } catch(e) { return null; }
+        }
+
+        // ── 同步狀態顯示 ──
+        function setSyncStatus(status) {
+            const el = document.getElementById('syncStatus');
+            if (!el) return;
+            const map = { uploading: '⏫ 上傳中…', synced: '✅ 已同步', error: '❌ 同步失敗', '': '' };
+            el.textContent = map[status] ?? '';
+        }
+
+        // ── Supabase REST ──
+        async function syncToSupabase(state) {
+            if (!SUPABASE_ENABLED) return;
+            setSyncStatus('uploading');
+            try {
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/kiddb`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Prefer': 'resolution=merge-duplicates'
+                    },
+                    body: JSON.stringify({ id: 'main', ...state, updated_at: new Date().toISOString() })
+                });
+                setSyncStatus(res.ok ? 'synced' : 'error');
+            } catch(e) { setSyncStatus('error'); }
+        }
+
+        async function loadFromSupabase() {
+            if (!SUPABASE_ENABLED) return null;
+            try {
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/kiddb?id=eq.main&select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                if (!res.ok) return null;
+                const data = await res.json();
+                return data.length > 0 ? data[0] : null;
+            } catch(e) { return null; }
+        }
+
+        // ── 儲存（本機 + 雲端）──
+        async function saveState() {
+            const state = getCurrentState();
+            if (!state) return;
+            saveToLocal(state);
+            await syncToSupabase(state);
+        }
+
+        // ── DOM 建構 ──
+        function makeLi(text) {
+            const li = document.createElement('li');
+            const span = document.createElement('span');
+            span.className = 'li-content';
+            span.textContent = text;
+            const btn = document.createElement('button');
+            btn.className = 'delete-item-btn no-print';
+            btn.textContent = '✕';
+            btn.addEventListener('click', async () => { li.remove(); await saveState(); });
+            li.appendChild(span);
+            li.appendChild(btn);
+            return li;
+        }
+
+        function reattachDeleteListeners(ul) {
+            ul.querySelectorAll('.delete-item-btn').forEach(btn => {
+                btn.addEventListener('click', async () => { btn.closest('li').remove(); await saveState(); });
+            });
+        }
+
+        function buildPage(student, courses, date, remindersHTML) {
+            const page = document.createElement('div');
+            page.className = 'a4-page';
+
+            const col = document.createElement('div');
+            col.className = 'single-column';
+
+            // 日期
+            const dateRow = document.createElement('div');
+            dateRow.className = 'row-section font-zh date-section';
+            const dateEl = document.createElement('span');
+            dateEl.className = 'date-field';
+            dateEl.textContent = date;
+            dateRow.appendChild(dateEl);
+            col.appendChild(dateRow);
+
+            // 上課內容
+            const courseRow = document.createElement('div');
+            courseRow.className = 'row-section';
+            const labelBox = document.createElement('div');
+            labelBox.className = 'label-box font-zh';
+            labelBox.textContent = '本週上課內容';
+            const ul = document.createElement('ul');
+            ul.className = 'item-list font-en course-list';
+            courses.forEach(t => ul.appendChild(makeLi(t)));
+            const addItemBtn = document.createElement('button');
+            addItemBtn.className = 'add-item-btn no-print';
+            addItemBtn.textContent = '＋ 新增項目';
+            addItemBtn.addEventListener('click', () => {
+                const li = makeLi('新項目');
+                li.querySelector('.li-content').contentEditable = 'true';
+                ul.appendChild(li);
+                li.querySelector('.li-content').focus();
+            });
+            courseRow.appendChild(labelBox);
+            courseRow.appendChild(ul);
+            courseRow.appendChild(addItemBtn);
+            col.appendChild(courseRow);
+
+            // 提醒
+            const reminderRow = document.createElement('div');
+            reminderRow.className = 'row-section font-zh';
+            const reminderEl = document.createElement('div');
+            reminderEl.className = 'reminders-field reminders';
+            reminderEl.innerText = remindersHTML.replace(/<br\s*\/?>/gi, '\n');
+            reminderRow.appendChild(reminderEl);
+            col.appendChild(reminderRow);
+
+            // 學生評語
+            const commentRow = document.createElement('div');
+            commentRow.className = 'row-section font-zh comment';
+            const delBtn = document.createElement('button');
+            delBtn.className = 'delete-student-btn no-print';
+            delBtn.style.cssText = 'float:right; margin-left:8px;';
+            delBtn.textContent = '✕ 刪除學生';
+            delBtn.addEventListener('click', async () => {
+                if (container.querySelectorAll('.a4-page').length <= 1) return;
+                page.remove();
+                await saveState();
+            });
+            const nameEl = document.createElement('span');
+            nameEl.className = 'student-name';
+            nameEl.textContent = student.name + ' ';
+            const commentEl = document.createElement('span');
+            commentEl.className = 'comment-field';
+            commentEl.textContent = student.comment;
+            commentRow.appendChild(delBtn);
+            commentRow.appendChild(nameEl);
+            commentRow.appendChild(commentEl);
+            col.appendChild(commentRow);
+
+            page.appendChild(col);
+            return page;
+        }
+
+        function syncCommonToAllPages() {
+            const pages = container.querySelectorAll('.a4-page');
+            if (pages.length < 2) return;
+            const p0 = pages[0];
+            const date = p0.querySelector('.date-field').textContent;
+            const remindersText = p0.querySelector('.reminders-field').innerText;
+            const courseHTML = p0.querySelector('.course-list').innerHTML;
+            for (let i = 1; i < pages.length; i++) {
+                pages[i].querySelector('.date-field').textContent = date;
+                pages[i].querySelector('.reminders-field').innerText = remindersText;
+                const cl = pages[i].querySelector('.course-list');
+                cl.innerHTML = courseHTML;
+                reattachDeleteListeners(cl);
+            }
+        }
+
+        function setEditMode(on) {
+            const val = on ? 'true' : 'false';
+            const pages = container.querySelectorAll('.a4-page');
+            if (pages.length > 0) {
+                pages[0].querySelector('.date-field').contentEditable = val;
+                pages[0].querySelector('.reminders-field').contentEditable = val;
+                pages[0].querySelectorAll('.li-content').forEach(el => el.contentEditable = val);
+            }
+            pages.forEach(p => {
+                p.querySelector('.student-name').contentEditable = val;
+                p.querySelector('.comment-field').contentEditable = val;
+            });
+        }
+
+        // ── 認證 ──
+        const SESSION_KEY = 'kid_contact_user';
+        const SESSION_TOKEN_KEY = 'kid_contact_token';
+
+        async function signInWithSupabase(email, password) {
+            if (!SUPABASE_ENABLED) return null;
+            try {
+                const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+                    method: 'POST',
+                    headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                if (!res.ok) return null;
+                const data = await res.json();
+                return data.access_token ? data : null;
+            } catch(e) { return null; }
+        }
+
+        async function signOutFromSupabase(token) {
+            if (!SUPABASE_ENABLED || !token) return;
+            try {
+                await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+                    method: 'POST',
+                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}` }
+                });
+            } catch(e) {}
+        }
+
+        function showApp(username) {
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.getElementById('app-content').classList.remove('hidden');
+            document.getElementById('current-user').textContent = username;
+        }
+
+        function showLogin() {
+            document.getElementById('app-content').classList.add('hidden');
+            document.getElementById('login-overlay').classList.remove('hidden');
+        }
+
+        // ── 資料載入 ──
+        async function loadData() {
+            const remote = await loadFromSupabase();
+            if (remote) {
+                buildPagesFromState(remote);
+                saveToLocal(remote);
+                setSyncStatus('synced');
+                return;
+            }
+            const local = loadFromLocal();
+            if (local) {
+                buildPagesFromState(local);
+                return;
+            }
+            INITIAL_STUDENTS.forEach(s =>
+                container.appendChild(buildPage(s, INITIAL_COURSES, INITIAL_DATE, INITIAL_REMINDERS))
+            );
+        }
+
+        // ── 初始化：檢查登入 → 載入資料 ──
+        async function initApp() {
+            const user = sessionStorage.getItem(SESSION_KEY);
+            if (!user) { showLogin(); return; }
+            showApp(user);
+            await loadData();
+        }
+        initApp();
+
+        // ── 按鈕事件 ──
+        const editBtn = document.getElementById('editBtn');
+        editBtn.addEventListener('click', async () => {
+            const isEditing = document.body.classList.toggle('edit-mode');
+            if (!isEditing) {
+                syncCommonToAllPages();
+                await saveState();
+            }
+            setEditMode(isEditing);
+            editBtn.textContent = isEditing ? '完成編輯' : '編輯';
+        });
+
+        document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+        document.getElementById('addStudentBtn').addEventListener('click', () => {
+            const p0 = container.querySelector('.a4-page');
+            const date = p0 ? p0.querySelector('.date-field').textContent : INITIAL_DATE;
+            const remindersHTML = p0 ? p0.querySelector('.reminders-field').innerHTML : INITIAL_REMINDERS;
+            const courses = p0
+                ? Array.from(p0.querySelectorAll('.li-content')).map(s => s.textContent)
+                : INITIAL_COURSES;
+            const newPage = buildPage({ name: '新學生', comment: '' }, courses, date, remindersHTML);
+            container.appendChild(newPage);
+            if (document.body.classList.contains('edit-mode')) {
+                newPage.querySelector('.student-name').contentEditable = 'true';
+                newPage.querySelector('.comment-field').contentEditable = 'true';
+            }
+            newPage.querySelector('.student-name').focus();
+            newPage.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        // ── 登入 / 登出 ──
+        async function doLogin() {
+            const email = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            const errEl = document.getElementById('login-error');
+            const btn = document.getElementById('login-btn');
+            if (!email || !password) { errEl.textContent = '請輸入電子郵件和密碼'; return; }
+            btn.disabled = true;
+            btn.textContent = '驗證中…';
+            errEl.textContent = '';
+            const session = await signInWithSupabase(email, password);
+            if (session) {
+                sessionStorage.setItem(SESSION_KEY, session.user.email);
+                sessionStorage.setItem(SESSION_TOKEN_KEY, session.access_token);
+                showApp(session.user.email);
+                await loadData();
+            } else {
+                errEl.textContent = '電子郵件或密碼錯誤';
+            }
+            btn.disabled = false;
+            btn.textContent = '登入';
+        }
+
+        document.getElementById('login-btn').addEventListener('click', doLogin);
+        document.getElementById('login-password').addEventListener('keydown', e => {
+            if (e.key === 'Enter') doLogin();
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            const token = sessionStorage.getItem(SESSION_TOKEN_KEY);
+            sessionStorage.removeItem(SESSION_KEY);
+            sessionStorage.removeItem(SESSION_TOKEN_KEY);
+            container.innerHTML = '';
+            document.getElementById('current-user').textContent = '';
+            document.getElementById('login-username').value = '';
+            document.getElementById('login-password').value = '';
+            showLogin();
+            await signOutFromSupabase(token);
+        });
+    </script>
+</body>
+</html>

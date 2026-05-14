@@ -152,8 +152,17 @@
         }
         body.edit-mode .add-item-btn { display: block; }
 
-        .add-student-btn { display: none; }
-        body.edit-mode .add-student-btn { display: inline-block; }
+        .insert-student-btn {
+            display: none;
+            background: none;
+            border: 1px solid #090;
+            color: #090;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 1px 6px;
+            border-radius: 3px;
+        }
+        body.edit-mode .insert-student-btn { display: inline-block; }
 
         .delete-student-btn {
             display: none;
@@ -215,6 +224,8 @@
         #app-content.hidden { display: none; }
         .logout-btn { font-size: 13px; color: #666; background: none; border: 1px solid #ccc; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
         .logout-btn:hover { color: #c00; border-color: #c00; }
+
+        body.hide-comment .comment { display: none; }
     </style>
 </head>
 <body>
@@ -233,9 +244,11 @@
         <div class="controls no-print">
             <button id="editBtn">編輯</button>
             <button id="printBtn">列印</button>
-            <button id="addStudentBtn" class="add-student-btn no-print">＋ 新增學生</button>
             <span id="syncStatus" class="no-print" style="font-size:12px;color:#666;margin-left:4px;"></span>
             <span id="current-user" class="no-print" style="font-size:12px;color:#888;margin-left:4px;"></span>
+            <label class="no-print" style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                <input type="checkbox" id="showCommentChk" checked> 顯示評語
+            </label>
             <button id="logoutBtn" class="logout-btn no-print">登出</button>
         </div>
         <div id="pages-container"></div>
@@ -452,12 +465,34 @@
                 page.remove();
                 await saveState();
             });
+
+            const insertBtn = document.createElement('button');
+            insertBtn.className = 'insert-student-btn no-print';
+            insertBtn.style.cssText = 'float:right; margin-left:8px;';
+            insertBtn.textContent = '＋ 插入學生';
+            insertBtn.addEventListener('click', () => {
+                const p0 = container.querySelector('.a4-page');
+                const date = p0 ? p0.querySelector('.date-field').textContent : INITIAL_DATE;
+                const remindersText = p0 ? p0.querySelector('.reminders-field').innerText : INITIAL_REMINDERS;
+                const courses = p0
+                    ? Array.from(p0.querySelectorAll('.li-content')).map(s => s.textContent)
+                    : INITIAL_COURSES;
+                const newPage = buildPage({ name: '新學生', comment: '表現很棒!' }, courses, date, remindersText);
+                page.after(newPage);
+                if (document.body.classList.contains('edit-mode')) {
+                    newPage.querySelector('.student-name').contentEditable = 'true';
+                    newPage.querySelector('.comment-field').contentEditable = 'true';
+                }
+                newPage.querySelector('.student-name').focus();
+                newPage.scrollIntoView({ behavior: 'smooth' });
+            });
             const nameEl = document.createElement('span');
             nameEl.className = 'student-name';
             nameEl.textContent = student.name + ' ';
             const commentEl = document.createElement('span');
             commentEl.className = 'comment-field';
             commentEl.textContent = student.comment;
+            commentRow.appendChild(insertBtn);
             commentRow.appendChild(delBtn);
             commentRow.appendChild(nameEl);
             commentRow.appendChild(commentEl);
@@ -578,22 +613,10 @@
 
         document.getElementById('printBtn').addEventListener('click', () => window.print());
 
-        document.getElementById('addStudentBtn').addEventListener('click', () => {
-            const p0 = container.querySelector('.a4-page');
-            const date = p0 ? p0.querySelector('.date-field').textContent : INITIAL_DATE;
-            const remindersHTML = p0 ? p0.querySelector('.reminders-field').innerHTML : INITIAL_REMINDERS;
-            const courses = p0
-                ? Array.from(p0.querySelectorAll('.li-content')).map(s => s.textContent)
-                : INITIAL_COURSES;
-            const newPage = buildPage({ name: '新學生', comment: '' }, courses, date, remindersHTML);
-            container.appendChild(newPage);
-            if (document.body.classList.contains('edit-mode')) {
-                newPage.querySelector('.student-name').contentEditable = 'true';
-                newPage.querySelector('.comment-field').contentEditable = 'true';
-            }
-            newPage.querySelector('.student-name').focus();
-            newPage.scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('showCommentChk').addEventListener('change', function() {
+            document.body.classList.toggle('hide-comment', !this.checked);
         });
+
 
         // ── 登入 / 登出 ──
         async function doLogin() {

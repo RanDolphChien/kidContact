@@ -176,6 +176,19 @@
         }
         body.edit-mode .delete-student-btn { display: inline-block; }
 
+        .sync-comment-btn {
+            display: none;
+            background: none;
+            border: 1px solid #a50;
+            color: #a50;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 1px 6px;
+            border-radius: 3px;
+        }
+        body.edit-mode .sync-comment-btn { display: inline-block; }
+        .a4-page ~ .a4-page .sync-comment-btn { display: none !important; }
+
         .btn-row {
             display: none;
             text-align: right;
@@ -503,8 +516,21 @@
             commentRow.style.borderBottom = 'none';
             col.appendChild(commentRow);
 
+            const syncCommentBtn = document.createElement('button');
+            syncCommentBtn.className = 'sync-comment-btn no-print';
+            syncCommentBtn.textContent = '↓ 同步評語';
+            syncCommentBtn.addEventListener('click', async () => {
+                const firstComment = container.querySelector('.a4-page .comment-field').textContent;
+                container.querySelectorAll('.a4-page').forEach((p, i) => {
+                    if (i === 0) return;
+                    p.querySelector('.comment-field').textContent = firstComment;
+                });
+                await saveState();
+            });
+
             const btnRow = document.createElement('div');
             btnRow.className = 'btn-row no-print';
+            btnRow.appendChild(syncCommentBtn);
             btnRow.appendChild(delBtn);
             btnRow.appendChild(insertBtn);
             col.appendChild(btnRow);

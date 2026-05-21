@@ -573,6 +573,10 @@
         const SESSION_KEY = 'kid_contact_user';
         const SESSION_TOKEN_KEY = 'kid_contact_token';
 
+        // ── Idle Auto-Logout ──
+        let idleTimer = null;
+        const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
         async function signInWithSupabase(email, password) {
             if (!SUPABASE_ENABLED) return null;
             try {
@@ -608,6 +612,39 @@
             document.getElementById('login-overlay').classList.remove('hidden');
         }
 
+        function resetIdleTimer() {
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(autoExitAndLogout, IDLE_TIMEOUT_MS);
+        }
+
+        function clearIdleTimer() {
+            clearTimeout(idleTimer);
+            idleTimer = null;
+        }
+
+        async function autoExitAndLogout() {
+            if (!document.body.classList.contains('edit-mode')) return;
+            clearIdleTimer();
+            container.removeEventListener('input', resetIdleTimer);
+            container.removeEventListener('click', resetIdleTimer);
+            // Exit edit mode
+            document.body.classList.remove('edit-mode');
+            syncCommonToAllPages();
+            setEditMode(false);
+            document.getElementById('editBtn').textContent = '編輯';
+            await saveState();
+            // Logout
+            const token = sessionStorage.getItem(SESSION_TOKEN_KEY);
+            sessionStorage.removeItem(SESSION_KEY);
+            sessionStorage.removeItem(SESSION_TOKEN_KEY);
+            container.innerHTML = '';
+            document.getElementById('current-user').textContent = '';
+            document.getElementById('login-username').value = '';
+            document.getElementById('login-password').value = '';
+            showLogin();
+            await signOutFromSupabase(token);
+        }
+
         // ── 資料載入 ──
         async function loadData() {
             const remote = await loadFromSupabase();
@@ -641,8 +678,15 @@
         editBtn.addEventListener('click', async () => {
             const isEditing = document.body.classList.toggle('edit-mode');
             if (!isEditing) {
+                clearIdleTimer();
+                container.removeEventListener('input', resetIdleTimer);
+                container.removeEventListener('click', resetIdleTimer);
                 syncCommonToAllPages();
                 await saveState();
+            } else {
+                container.addEventListener('input', resetIdleTimer);
+                container.addEventListener('click', resetIdleTimer);
+                resetIdleTimer();
             }
             setEditMode(isEditing);
             editBtn.textContent = isEditing ? '完成編輯' : '編輯';
